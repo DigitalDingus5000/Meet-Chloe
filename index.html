@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meet Chloe — Chapter One</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hud-bar">
+    <div class="hud-stats">
+      <div class="hud-item"><span class="hud-label">Social Read</span><span class="hud-value" id="hud-social-read">You are a nobody</span></div>
+      <div class="hud-item"><span class="hud-label">Cash</span><span class="hud-value" id="hud-cash">$120</span></div>
+      <div class="hud-item"><span class="hud-label">Grades</span><span class="hud-value" id="hud-grades">B</span></div>
+    </div>
+    <div class="hud-actions">
+      <button type="button" class="hud-btn" id="btn-open-dm">Messages <span class="dm-badge" id="dm-unread-badge">0</span></button>
+      <button type="button" class="hud-btn" id="btn-restart">New Run</button>
+    </div>
+  </header>
+
+  <main class="bookplate-frame">
+    <section class="bookplate-inner">
+      <div class="scene-header">
+        <div class="scene-chapter" id="scene-chapter"></div>
+        <h1 class="scene-title" id="scene-title"></h1>
+        <div class="beat-pill" id="beat-indicator" style="display:none;"></div>
+      </div>
+      <article class="narrative-body" id="narrative-body"></article>
+      <div class="choices-deck" id="choices-deck"></div>
+    </section>
+  </main>
+
+  <aside class="dm-overlay" id="dm-overlay">
+    <div class="dm-drawer">
+      <div class="dm-drawer-header">
+        <span class="dm-drawer-title">Campus Correspondence</span>
+        <button type="button" class="hud-btn" id="btn-close-dm">Close</button>
+      </div>
+      <div id="dm-threads-container"></div>
+    </div>
+  </aside>
+
+  <script src="characters.js"></script>
+  <script src="engine.js"></script>
+  <script src="episode1.js"></script>
+  <script src="episode2_part1.js"></script>
+  <script src="episode2_part2.js"></script>
+
+  <script>
+    const SCENES = Object.assign({}, EPISODE1_SCENES, EPISODE2_PART1_SCENES, EPISODE2_PART2_SCENES);
+
+    // Overrides the engine's renderHUD (this script loads last)
+    function renderHUD() {
+      document.getElementById("hud-social-read").textContent = computeSocialRead(state);
+      document.getElementById("hud-cash").textContent = "$" + state.cash;
+      document.getElementById("hud-grades").textContent = state.grades;
+      const unread = getTotalUnreadDMs();
+      const badge = document.getElementById("dm-unread-badge");
+      badge.textContent = unread;
+      badge.classList.toggle("visible", unread > 0);
+    }
+
+    function goToScene(sceneId) {
+      const scene = SCENES[sceneId];
+      if (!scene) { console.error("Missing scene:", sceneId); return; }
+
+      state.sceneId = sceneId;
+      if (sceneId.startsWith("ep2_")) state.episode = 2;
+      state.presentNPCs = Array.isArray(scene.presentNPCs) ? [...scene.presentNPCs] : [];
+
+      const rendered = scene.render();
+
+      document.getElementById("scene-chapter").textContent = scene.chapter || "CHAPTER I";
+      document.getElementById("scene-title").textContent = scene.title || "Meet Chloe";
+
+      const beatEl = document.getElementById("beat-indicator");
+      if (state.activeArc) {
+        beatEl.style.display = "inline-block";
+        beatEl.textContent = "Scene Depth · Beat " + Math.min(state.activeArc.beatIndex, state.activeArc.minBeats) + " of " + state.activeArc.minBeats;
+      } else {
+        beatEl.style.display = "none";
+      }
+
+      const bodyEl = document.getElementById("narrative-body");
+      bodyEl.innerHTML = "";
+      (rendered.text || []).forEach((t) => {
+        const p = document.createElement("p");
+        p.textContent = t;
+        bodyEl.appendChild(p);
+      });
+
+      const choicesEl = document.getElementById("choices-deck");
+      choicesEl.innerHTML = "";
+      (rendered.choices || []).forEach((c) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice-btn";
+        btn.textContent = c.label;
+        btn.addEventListener("click", () => {
+          c.action();
+          renderHUD();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+        choicesEl.appendChild(btn);
+      });
+      renderHUD();
+    }
+
+    // Engine calls this name after pushDM / replyToDM
+    function renderCorrespondenceDrawer() {
+      const container = document.getElementById("dm-threads-container");
+      container.innerHTML = "";
+      const threads = Object.values(state.dmThreads);
+      if (!threads.length) {
+        const p = document.createElement("p");
+        p.style.color = "#a69b8d";
+        p.textContent = "No campus messages yet. Keep moving through the day.";
+        container.appendChild(p);
+        return;
+      }
+      threads.forEach((thread) => {
+        const card = document.createElement("div");
+        card.className = "dm-thread";
+        const sender = document.createElement("div");
+        sender.className = "dm-sender";
+        sender.textContent = thread.name + " " + (thread.handle || "");
+        card.appendChild(sender);
+
+        thread.messages.forEach((m) => {
+          const b = document.createElement("div");
+          b.className = "dm-bubble" + (m.isPlayer ? " player" : "");
+          b.textContent = m.text;
+          card.appendChild(b);
+        });
+
+        if (Array.isArray(thread.replyOptions)) {
+          const list = document.createElement("div");
+          list.className = "dm-reply-list";
+          thread.replyOptions.forEach((opt, i) => {
+            const rb = document.createElement("button");
+            rb.type = "button";
+            rb.className = "dm-reply-btn";
+            rb.textContent = opt.playerText;
+            rb.addEvent

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<body style="background:#111;color:#fff;font:16px monospace;padding:12px">
+<h3>Chloe check</h3>
+<pre id="o"></pre>
+<script>
+var o = document.getElementById('o');
+function log(t) { o.textContent += t + "\n"; }
+window.onerror = function (m, s, l) {
+  log("ERROR: " + m + " (" + String(s).split('/').pop() + ":" + l + ")");
+};
+log("page JS runs");
+</script>
+<script src="characters.js"></script>
+<script>log("characters.js: " + (typeof CHARACTERS));</script>
+<script src="engine.js"></script>
+<script>log("engine.js: " + (typeof INITIAL_STATE));</script>
+<script src="episode1.js"></script>
+<script>log("episode1.js: " + (typeof EPISODE1_SCENES));</script>
+<script src="episode2_part1.js"></script>
+<script>log("episode2_part1.js: " + (typeof EPISODE2_PART1_SCENES));</script>
+<script src="episode2_part2.js"></script>
+<script>log("episode2_part2.js: " + (typeof EPISODE2_PART2_SCENES));</script>
+</body>
+</html>

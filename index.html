@@ -7,6 +7,13 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <script>
+window.onerror = function (msg, src, line) {
+  document.body.insertAdjacentHTML('afterbegin',
+    '<pre style="color:#fff;background:#900;padding:10px;white-space:pre-wrap">' +
+    msg + ' (' + String(src).split('/').pop() + ':' + line + ')</pre>');
+};
+  </script>
   <header class="hud-bar">
     <div class="hud-stats">
       <div class="hud-item"><span class="hud-label">Social Read</span><span class="hud-value" id="hud-social-read">You are a nobody</span></div>

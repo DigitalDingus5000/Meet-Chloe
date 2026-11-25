@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<body style="background:#111;color:#fff;font:15px monospace;padding:12px">
+<h3>Chloe check 2</h3>
+<pre id="o" style="white-space:pre-wrap"></pre>
+<script>
+var o = document.getElementById('o');
+function log(t) { o.textContent += t + "\n"; }
+window.onerror = function (m, s, l) {
+  log("ERROR: " + m + " (" + String(s).split('/').pop() + ":" + l + ")");
+};
+</script>
+<script src="characters.js"></script>
+<script src="engine.js"></script>
+<script src="episode1.js"></script>
+<script src="episode2_part1.js"></script>
+<script src="episode2_part2.js"></script>
+<script>
+try {
+  var S = Object.assign({}, EPISODE1_SCENES, EPISODE2_PART1_SCENES, EPISODE2_PART2_SCENES);
+  log("scenes found: " + Object.keys(S).length);
+  ["warmup_1", "ep1_scene1", "ep2_orientation", "ep2_finale_dossier"].forEach(function (id) {
+    try {
+      var r = S[id].render();
+      log(id + ": OK (" + r.text.length + " paragraphs, " + r.choices.length + " choices)");
+    } catch (e) {
+      log(id + ": FAILED - " + e.message);
+    }
+  });
+} catch (e) {
+  log("SETUP FAILED: " + e.message);
+}
+fetch("index.html?x=" + Date.now()).then(function (r) { return r.text(); }).then(function (t) {
+  log("index.html length: " + t.length);
+  log("has goToScene: " + t.includes("function goToScene"));
+  log("has DOMContentLoaded: " + t.includes("DOMContentLoaded"));
+  log("has </html>: " + t.includes("</html>"));
+}).catch(function (e) { log("index fetch failed: " + e.message); });
+</script>
+</body>
+</html>

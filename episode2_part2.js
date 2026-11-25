@@ -1,20 +1,106 @@
 // ============================================================================
 // MEET CHLOE — CHAPTER ONE: EPISODE TWO, PART 2 (episode2_part2.js)
-// Covers Scenes 5–6, Bonus Scenes (10 beats each), & Finale Dossier:
+// Covers Scenes 5–6, Bonus Scenes, & Finale Dossier:
 // - Scene 5 Router: Post-Afternoon Class (4 beats/person, Low/High Aura entry, Yesterday's Homework)
 //   OR Conditional Brandon Side-Event (only if failed all job checks, failed Teacher's Pet, & alone)
 // - Convergence Bridge: 4:30 PM West Pines Path -> Scene 6 School Hangout
 // - Scene 6: School Hangout (6 beats/person, 8-person Truth or Dare, 5-turn Spin the Bottle,
 //   CONTROL vs PURSUE Multi-Girl Kiss Meltdown + High/Low Control intervention)
-// - Winding Down -> Extended 10-Beat Bonus Scenes:
-//     * Group Sleepover: Good vs Bad girl combos + High vs Low Emotional Control outcome
-//     * Private Dorm Night with Chloe (Chloe's dorm or yours)
-//     * Invite-Only VIP Mixer Party: Go Alone (Tanya + Nate sabotage) OR Go With Chloe
-//       (Joined by Max -> Low Aura = Max leaves w/ Chloe; High Aura + High Control & Mastery = Chloe stays;
-//        High Aura + Low Control = Fight Max option -> guaranteed loss)
+// - Winding Down -> Extended Bonus Scenes:
+//     * Single-Girl Sleepover (HOT girl + High Aura -> 6 beats -> SFW sex scene + non-negotiable GF claim)
+//     * Group Sleepover (Multi-person 6 beats/person -> High Aura + all HOT + Chloe PURSUE + High Control + Uber cash check -> Threesome/Foursome/Fivesome + Uber home OR normal sleepover)
+//     * Chloe Alone Sleepover (VIP party invite branch w/ GF refusal vs Max party OR 6-beat SleptWithChloe / Boyfriend-Rejection matrix check)
+//     * Invite-Only VIP Mixer Party:
+//         - Anonymous Invite from Ep.1 -> Ally (2nd-yr Asian Pick Me, Tanya rival) + Brandon interruption
+//         - Go Alone (Tanya + Nate sabotage) OR Go With Chloe
+//           (Joined by Max -> Low Aura = Max leaves w/ Chloe; High Aura + High Control & Mastery = Chloe stays;
+//            High Aura + Low Control = Fight Max option -> guaranteed loss)
 // - Episode 2 Finale Dossier (Reveals Hidden Stats, 2x2 Matrix, HOT/NOT, & Choice-Memory Log)
 // Depends on: characters.js, engine.js, episode2_part1.js
 // ============================================================================
+
+function ep2ChloeModeLine(pursueText, controlText) {
+  if (typeof chloeStateLine === "function") {
+    return chloeStateLine(pursueText, controlText);
+  }
+  return state.chloeMode === "PURSUE" ? pursueText : controlText;
+}
+
+function ep2ChloeChoiceLabel(pursueLabel, controlLabel) {
+  return state.chloeMode === "PURSUE" ? pursueLabel : controlLabel;
+}
+
+function ep2TransitionToScene(targetSceneId) {
+  if (state && state.activeArc) {
+    state.activeArc = null;
+  }
+  goToScene(targetSceneId);
+}
+
+function ep2PassedAnyJobCheck() {
+  return Boolean(
+    state.mem.passedJobCheck ||
+    state.mem.councilRole === "fresher_liaison" ||
+    state.mem.councilRole === "policy_coordinator"
+  );
+}
+
+function ep2HasAnonymousVipInvite() {
+  return Boolean(
+    state.mem.anonVipInvite ||
+    state.mem.anonymousVipInvite ||
+    state.mem.ep1AnonVipInvite ||
+    state.mem.receivedAnonVipMessage
+  );
+}
+
+function ep2HasVipMixerAccess() {
+  return Boolean(
+    ep2HasAnonymousVipInvite() ||
+    state.mem.hasVIPMixerTicket ||
+    state.mem.vipMixerInvite ||
+    state.mem.ep1VipTicket ||
+    state.mem.hasVIPWristband ||
+    state.mem.tanyaPersonalVipGranted
+  );
+}
+
+function ep2BrandonStanding() {
+  const metBrandon = Boolean(
+    state.mem.brandonBond ||
+    state.mem.metBrandon ||
+    (state.rep && (state.rep.brandon || 0) !== 0) ||
+    (typeof npcRemembers === "function" &&
+      (npcRemembers("brandon", "ep2_brandon_side_bond") || npcRemembers("brandon", "ep1_met_brandon")))
+  );
+  if (!metBrandon) return "unmet";
+  if ((state.rep && (state.rep.brandon || 0) < 0) || state.mem.brandonFoe) return "foe";
+  return "friend";
+}
+
+function ep2IsChloeGirlfriend() {
+  return Boolean(
+    state.mem.chloeGirlfriend ||
+    state.mem.girlfriend === "chloe" ||
+    state.mem.night1Ending === "pursue_room_six_beats_sfw_bf"
+  );
+}
+
+function ep2SleptWithChloe() {
+  return Boolean(
+    state.mem.sleptWithChloe ||
+    state.mem.night1Ending === "pursue_dorm_sfw" ||
+    state.mem.night1Ending === "pursue_room_six_beats_sfw_bf" ||
+    state.mem.night1Ending === "pursue_room_six_beats_sfw_refused"
+  );
+}
+
+function ep2RejectedChloeBoyfriend() {
+  return Boolean(
+    state.mem.rejectedChloeBoyfriend ||
+    state.mem.night1Ending === "pursue_room_six_beats_sfw_refused"
+  );
+}
 
 const EPISODE2_PART2_SCENES = {
   // ==========================================================================
@@ -26,7 +112,7 @@ const EPISODE2_PART2_SCENES = {
     title: "1:54 PM — Block B Corridor",
     presentNPCs: [],
     render: () => {
-      const failedAllJobs = !state.mem.passedJobCheck;
+      const failedAllJobs = !ep2PassedAnyJobCheck();
       const failedTeachersPet = !npcRemembers("elliot", "ep1_outshone_elliot");
       const isAlone = !state.mem.lunchCompanion || state.mem.lunchCompanion === "alone";
 
@@ -34,7 +120,7 @@ const EPISODE2_PART2_SCENES = {
         startGetToKnowYouArc("ep2_brandon_side", "brandon", "ep2_post_class_convergence", 4);
         return {
           text: [
-            "You walk down the Block B corridor alone at 1:54 PM—no Council liaison badge, no Teacher's Pet leverage from yesterday, and the heavy oak door to Lecture Room 4 already latched shut with Vance's voice booming behind the glass.",
+            "You walk down the Block B corridor alone at 1:54 PM—no Council liaison role, no Teacher's Pet leverage from yesterday, and the heavy oak door to Lecture Room 4 already latched shut with Vance's voice booming behind the glass.",
             "On the wooden bench outside the stairwell alcove sits a familiar figure with tapered locs, wired studio headphones around his collar, and a beat-up lyric notebook balanced on one knee."
           ],
           choices: [
@@ -177,8 +263,7 @@ const EPISODE2_PART2_SCENES = {
           {
             label: "Rejoin the cohort heading toward the West Pines Pavilion →",
             action: () => {
-              advanceGetToKnowYouBeat();
-              goToScene("ep2_post_class_convergence");
+              ep2TransitionToScene("ep2_post_class_convergence");
             }
           }
         ]
@@ -204,7 +289,10 @@ const EPISODE2_PART2_SCENES = {
       if (beat === 1) {
         const companionDesc =
           companion === "chloe_maya"
-            ? "Chloe and Maya slide into the back-left bench right beside you, exchanging a quick, stifled look as the door clicks shut."
+            ? ep2ChloeModeLine(
+                "Chloe and Maya slide into the back-left bench right beside you, Chloe leaning a fraction closer with an eager, low-key grin as the door clicks shut.",
+                "Chloe and Maya slide into the back-left bench right beside you, Chloe keeping her posture composed and coolly detached as the door clicks shut."
+              )
             : companion === "twins"
               ? "Brandy and Mandy take the aisle seats beside you, unbothered despite arriving eight minutes past the bell."
               : companion === "laura"
@@ -238,6 +326,14 @@ const EPISODE2_PART2_SCENES = {
       if (beat === 2) {
         const hasHomework =
           state.mem.night1Ending === "flipped_lib" ||
+          state.mem.night1Ending === "control_did_homework" ||
+          state.mem.night1Ending === "control_library_tension_raised" ||
+          state.mem.night1Ending === "pursue_library_elliot_done" ||
+          state.mem.night1Ending === "pursue_dorm_sfw" ||
+          state.mem.night1Ending === "pursue_escort_with_elliot" ||
+          state.mem.night1Ending === "pursue_room_six_beats_sfw_bf" ||
+          state.mem.night1Ending === "pursue_room_six_beats_sfw_refused" ||
+          state.mem.night1Ending === "pursue_room_six_beats_cuddle" ||
           state.mem.middayRoute === "library" ||
           npcRemembers("elliot", "ep1_outshone_elliot");
 
@@ -246,8 +342,8 @@ const EPISODE2_PART2_SCENES = {
             "Ten minutes into the lecture, Vance sets down his chalk and taps the lectern. \"Before we move to pricing models, pass yesterday's diagnostic homework down to the aisle. No extensions.\"",
             "Elliot snaps his crisp, stapled packet onto the aisle desk within two seconds, looking back toward your row to see if you're empty-handed.",
             hasHomework
-              ? "Because you put the hours into yesterday's work, your completed diagnostic sits right inside your folder—clean, annotated, and ready."
-              : "Your folder is light—yesterday's social detours left yesterday's diagnostic half-finished."
+              ? "Because you put the hours into yesterday's work—or had it taken care of before class—your completed diagnostic sits right inside your folder, clean and ready."
+              : "Your folder is light—yesterday's detours left yesterday's diagnostic half-finished."
           ],
           choices: hasHomework
             ? [
@@ -291,7 +387,10 @@ const EPISODE2_PART2_SCENES = {
       if (beat === 3) {
         const banterText =
           companion === "chloe_maya"
-            ? "Under the desk, Chloe slides a folded corner of paper toward your wrist with two words scribbled in ink: 'Pavilion. 6 PM.' Maya gives a small, approving nod beside her."
+            ? ep2ChloeModeLine(
+                "Under the desk, Chloe slides a folded corner of paper toward your wrist with 'Pavilion. 6 PM' and a small smiley drawn beside it—clearly leaning into seeing you tonight. Maya gives a soft nod beside her.",
+                "Under the desk, Chloe slides a folded corner of paper toward your wrist with two crisp words: 'Pavilion. 6 PM.' Her posture stays guarded and composed as she sets the terms cleanly."
+              )
             : companion === "twins"
               ? "Mandy leans over whispering bets on who's folding first at tonight's shelter hangout while Brandy rolls her eyes with a smirk."
               : companion === "laura"
@@ -307,7 +406,10 @@ const EPISODE2_PART2_SCENES = {
           ],
           choices: [
             {
-              label: "Give a subtle nod as the clock ticks toward dismissal.",
+              label: ep2ChloeChoiceLabel(
+                "Give Chloe a subtle, confident nod back as the clock ticks toward dismissal.",
+                "Give a measured, composed nod as the clock ticks toward dismissal."
+              ),
               action: () => {
                 advanceGetToKnowYouBeat();
                 goToScene("ep2_scene5_class");
@@ -325,8 +427,7 @@ const EPISODE2_PART2_SCENES = {
           {
             label: "Step out of Block B and converge with the crowd →",
             action: () => {
-              advanceGetToKnowYouBeat();
-              goToScene("ep2_post_class_convergence");
+              ep2TransitionToScene("ep2_post_class_convergence");
             }
           }
         ]
@@ -347,9 +448,16 @@ const EPISODE2_PART2_SCENES = {
         state.presentNPCs.push("laura");
       }
 
+      const councilNote =
+        state.mem.tanyaAcknowledged || state.tanyaStatus === "HOT"
+          ? "Tanya's HOT acknowledgement from the Student Council assembly still carries quiet weight as you walk the dusk trail."
+          : ep2PassedAnyJobCheck()
+            ? "Your Student Council role selection from the morning assembly sets you apart as the cohort heads toward the pines."
+            : "The afternoon's morning assembly and seminars are behind you as the dusk trail opens up.";
+
       return {
         text: [
-          "By 5:45 PM, the gravel footpath winding behind the west pines hums with footsteps, portable bass speakers, and paper bags of snacks.",
+          "By 5:45 PM, the gravel footpath winding behind the west pines hums with footsteps, portable bass speakers, and paper bags of snacks. " + councilNote,
           "Every detour from the afternoon converges at the timber-framed Pavilion Shelter overlooking the lower pond—where string lights flicker on above wooden benches and the core fresher circle gathers for the night."
         ],
         choices: [
@@ -389,7 +497,10 @@ const EPISODE2_PART2_SCENES = {
         return {
           text: [
             "Eight voices overlap under the warm string lights of the West Pines Pavilion. Malik drops a Bluetooth speaker onto the center crate while Rob passes out cold sodas.",
-            "Chloe sits cross-legged on the wide bench beside Maya, golden hair catching the amber bulbs; Brandy and Mandy claim the opposite rail; Elliot sits stiffly at the edge trying to prove he isn't a square; and " + lauraLine,
+            ep2ChloeModeLine(
+              "Chloe sits cross-legged on the wide bench beside Maya, golden hair catching the amber bulbs and shooting you a quick, warm, teasing look; Brandy and Mandy claim the opposite rail; Elliot sits stiffly at the edge trying to prove he isn't a square; and " + lauraLine,
+              "Chloe sits cross-legged on the wide bench beside Maya, golden hair catching the amber bulbs and holding a cool, composed, unbothered gaze; Brandy and Mandy claim the opposite rail; Elliot sits stiffly at the edge trying to prove he isn't a square; and " + lauraLine
+            ),
             "Malik claps twice. \"Eight-person Truth or Dare queue first—no dodging, no weak answers. Starting with you.\""
           ],
           choices: [
@@ -456,7 +567,10 @@ const EPISODE2_PART2_SCENES = {
         const brandyHot = isGirlHot("brandy", state);
         return {
           text: [
-            "Turn 1 lands on Chloe—she locks eyes with you across the crate, a slow spark flashing under the string lights before Malik spins again and Turn 2 lands squarely on Brandy.",
+            ep2ChloeModeLine(
+              "Turn 1 lands on Chloe—she locks eyes with you across the crate with an unmistakable spark in PURSUE mode before Malik spins again and Turn 2 lands squarely on Brandy.",
+              "Turn 1 lands on Chloe—she holds a cool, measured look in CONTROL mode as the bottle passes before Malik spins again and Turn 2 lands squarely on Brandy."
+            ),
             brandyHot
               ? "Brandy doesn't blink—she leans forward onto her knees, glossy lips curving in a challenge because you've got the Aura and sharp banter she respects."
               : "Brandy crosses her arms with a dry laugh, waving two fingers dismissively—she's not giving freebies to someone who hasn't earned her interest."
@@ -593,7 +707,10 @@ const EPISODE2_PART2_SCENES = {
                 ]
               : []),
             {
-              label: "Lean back beside Chloe as the final spin wraps up.",
+              label: ep2ChloeChoiceLabel(
+                "Lean back beside Chloe as the final spin wraps up—letting her stay close.",
+                "Lean back beside Chloe as the final spin wraps up—keeping things composed and low-key."
+              ),
               action: () => {
                 adjustChloeMatrix(2, 1);
                 advanceGetToKnowYouBeat();
@@ -612,8 +729,7 @@ const EPISODE2_PART2_SCENES = {
           {
             label: "Step out to the edge of the pavilion as the night winds down →",
             action: () => {
-              advanceGetToKnowYouBeat();
-              goToScene("ep2_winding_down");
+              ep2TransitionToScene("ep2_winding_down");
             }
           }
         ]
@@ -652,7 +768,7 @@ const EPISODE2_PART2_SCENES = {
                   state.rep.chloe += 4;
                   state.mem.resolvedMeltdown = true;
                   recordChoiceMemory("ep2_resolved_meltdown", "chloe", "Used high Emotional Control to de-escalate Chloe's jealousy meltdown privately.");
-                  goToScene("ep2_winding_down");
+                  ep2TransitionToScene("ep2_winding_down");
                 }
               }
             ]
@@ -664,7 +780,7 @@ const EPISODE2_PART2_SCENES = {
                   state.rep.chloe -= 6;
                   state.mem.bitter_meltdown = true;
                   recordChoiceMemory("ep2_bitter_meltdown", "chloe", "Let Chloe's hangout meltdown end bitterly in front of the circle.");
-                  goToScene("ep2_winding_down");
+                  ep2TransitionToScene("ep2_winding_down");
                 }
               }
             ]
@@ -673,7 +789,7 @@ const EPISODE2_PART2_SCENES = {
   },
 
   // ==========================================================================
-  // PRE-BONUS CONVERGENCE: WINDING DOWN -> ROUTING TO 10-BEAT BONUS SCENES
+  // PRE-BONUS CONVERGENCE: WINDING DOWN -> ROUTING TO BONUS SCENES
   // ==========================================================================
   ep2_winding_down: {
     id: "ep2_winding_down",
@@ -681,55 +797,65 @@ const EPISODE2_PART2_SCENES = {
     title: "Winding Down",
     presentNPCs: ["chloe", "maya", "brandy", "mandy"],
     render: () => {
-      const girls = ["chloe", "maya", "brandy", "mandy"];
-      if (knowsLaura(state)) girls.push("laura");
-      const hotGirls = girls.filter((g) => isGirlHot(g, state));
+      const otherGirls = ["maya", "brandy", "mandy"];
+      if (knowsLaura(state)) otherGirls.push("laura");
+      const hotOtherGirls = otherGirls.filter((g) => isGirlHot(g, state));
 
-      const canGroupSleepover = hotGirls.length >= 2 && !state.mem.bitter_meltdown;
-      const canChloeDorm =
-        state.chloeMode === "PURSUE" &&
-        state.comfort >= 20 &&
-        !state.mem.bitter_meltdown;
-      // VIP Mixer Party: invite-only, triggers ONLY if High Aura and nothing else to do
-      const canVIPMixer = state.aura >= 62 && !canGroupSleepover && !canChloeDorm;
-      // Also allow VIP Mixer with Chloe if invited and player chooses to take Chloe to the VIP Mixer
-      const canVIPWithChloe = Boolean(state.mem.hasVIPWristband) && !state.mem.bitter_meltdown && state.chloeMode === "PURSUE";
+      const allGirls = ["chloe", ...otherGirls];
+      const hotAllGirls = allGirls.filter((g) => isGirlHot(g, state));
+
+      const hasAnonInvite = ep2HasAnonymousVipInvite();
+      const canSingleSleepover = hotOtherGirls.length >= 1 && state.aura >= 60;
+      const canGroupSleepover = hotAllGirls.length >= 2 && !state.mem.bitter_meltdown;
+      const canChloeSleepover = !state.mem.bitter_meltdown;
+      const canVIPMixer = state.aura >= 62 && !canGroupSleepover && !canSingleSleepover;
 
       return {
         text: [
-          "By 8:30 PM, the pavilion firepit dies down to glowing embers. Distant bass thumps from the east courtyard where Nate and Tanya's invite-only VIP Mixer Party is getting underway.",
-          "Your phone vibrates once in your palm as the night branches toward its final chapter."
+          "By 8:30 PM, the pavilion firepit dies down to glowing embers. Distant bass thumps from the east courtyard where the invite-only VIP Mixer Party is getting underway.",
+          hasAnonInvite
+            ? "Your phone pings with an anonymous message confirming your VIP Mixer entry—and right beside it, the night branches toward its final chapter."
+            : "Your phone vibrates once in your palm as the night branches toward its final chapter."
         ],
         choices: [
+          ...(hasAnonInvite
+            ? [
+                {
+                  label: "Follow the Episode One anonymous message into the VIP Mixer Party—meet Ally (10-Beat Extended Bonus).",
+                  action: () => {
+                    state.mem.vipMode = "ally_anon";
+                    startGetToKnowYouArc("ep2_bonus_vip_ally_arc", "ally", "ep2_night2_close", 10);
+                    goToScene("ep2_vip_ally");
+                  }
+                }
+              ]
+            : []),
+          ...(canSingleSleepover
+            ? [
+                {
+                  label: "Invite a single HOT girl back for a 1-on-1 Sleepover (6 Story Beats — High Aura).",
+                  action: () => {
+                    goToScene("ep2_single_sleepover_setup");
+                  }
+                }
+              ]
+            : []),
           ...(canGroupSleepover
             ? [
                 {
-                  label: "Pitch/accept an after-hours Group Sleepover—choosing your girl combination carefully (10-Beat Extended Bonus).",
+                  label: "Host an after-hours Multi-Person Sleepover (6 Story Beats per girl present).",
                   action: () => {
                     goToScene("ep2_sleepover_setup");
                   }
                 }
               ]
             : []),
-          ...(canChloeDorm
+          ...(canChloeSleepover
             ? [
                 {
-                  label: "Slip away with Chloe to her dorm or yours for the rest of the night (10-Beat Extended Bonus).",
+                  label: "Spend the night with Chloe alone (VIP Party Invite / Girlfriend & Matrix Sleepover Check).",
                   action: () => {
-                    startGetToKnowYouArc("ep2_bonus_chloe_arc", "chloe", "ep2_finale_dossier", 10);
-                    goToScene("ep2_bonus_chloe_dorm");
-                  }
-                }
-              ]
-            : []),
-          ...(canVIPWithChloe
-            ? [
-                {
-                  label: "Use your VIP access and walk into the invite-only VIP Mixer Party with Chloe (10-Beat Extended Bonus).",
-                  action: () => {
-                    state.mem.vipMode = "with_chloe";
-                    startGetToKnowYouArc("ep2_bonus_vip_chloe_arc", "chloe", "ep2_finale_dossier", 10);
-                    goToScene("ep2_vip_with_chloe");
+                    goToScene("ep2_chloe_alone_sleepover_router");
                   }
                 }
               ]
@@ -740,7 +866,7 @@ const EPISODE2_PART2_SCENES = {
                   label: "With High Aura and nothing else tying you down, go alone to the invite-only VIP Mixer Party (10-Beat Extended Bonus).",
                   action: () => {
                     state.mem.vipMode = "alone";
-                    startGetToKnowYouArc("ep2_bonus_vip_alone_arc", "tanya", "ep2_finale_dossier", 10);
+                    startGetToKnowYouArc("ep2_bonus_vip_alone_arc", "tanya", "ep2_night2_close", 10);
                     goToScene("ep2_vip_alone");
                   }
                 }
@@ -749,7 +875,7 @@ const EPISODE2_PART2_SCENES = {
           {
             label: "Call it a night and walk back across the quiet quad to your dorm.",
             action: () => {
-              goToScene("ep2_night2_close");
+              ep2TransitionToScene("ep2_night2_close");
             }
           }
         ]
@@ -758,47 +884,315 @@ const EPISODE2_PART2_SCENES = {
   },
 
   // ==========================================================================
-  // BONUS SCENE A: GROUP SLEEPOVER (GOOD VS BAD COMBOS + EMOTIONAL CONTROL)
+  // BONUS SCENE S1: SINGLE-GIRL SLEEPOVER (6 BEATS + HOT CHECK -> SFW SEX + NON-NEGOTIABLE GF)
+  // ==========================================================================
+  ep2_single_sleepover_setup: {
+    id: "ep2_single_sleepover_setup",
+    chapter: "CHAPTER I · BONUS CHAPTER",
+    title: "One-on-One Sleepover",
+    presentNPCs: ["maya", "brandy", "mandy"],
+    render: () => {
+      const candidates = ["maya", "brandy", "mandy"];
+      if (knowsLaura(state)) candidates.push("laura");
+      const hotCandidates = candidates.filter((g) => isGirlHot(g, state));
+
+      return {
+        text: [
+          "With your High Aura drawing attention all evening, one girl lingers behind at the edge of the residence walkway—waiting to see if you'll invite her upstairs alone."
+        ],
+        choices: [
+          ...hotCandidates.map((g) => {
+            const name = CHARACTERS[g] ? CHARACTERS[g].name : g;
+            return {
+              label: `Invite ${name} up for a 1-on-1 Sleepover (6 Story Beats).`,
+              action: () => {
+                state.mem.singleSleepoverGirl = g;
+                startGetToKnowYouArc("ep2_single_sleepover_arc", g, "ep2_night2_close", 6);
+                goToScene("ep2_single_sleepover");
+              }
+            };
+          }),
+          {
+            label: "Step back toward the walkway and reconsider your plans for the night.",
+            action: () => {
+              ep2TransitionToScene("ep2_winding_down");
+            }
+          }
+        ]
+      };
+    }
+  },
+
+  ep2_single_sleepover: {
+    id: "ep2_single_sleepover",
+    chapter: "CHAPTER I · BONUS CHAPTER",
+    title: "Private Sleepover — 1-on-1",
+    presentNPCs: [],
+    render: () => {
+      const girl = state.mem.singleSleepoverGirl || "maya";
+      const name = CHARACTERS[girl] ? CHARACTERS[girl].name : girl;
+      state.presentNPCs = [girl];
+      const arc = state.activeArc || startGetToKnowYouArc("ep2_single_sleepover_arc", girl, "ep2_night2_close", 6);
+      const beat = arc.beatIndex;
+
+      if (beat === 1) {
+        return {
+          text: [
+            `The dorm door clicks shut behind you and ${name}, locking out the noise of the campus quad. She kicks off her shoes by the mat and drops onto the edge of the bed with an unguarded smile.`
+          ],
+          choices: [
+            {
+              label: `Keep the vibe relaxed and confident—"Glad you came up instead of heading back early."`,
+              action: () => {
+                state.rep[girl] = (state.rep[girl] || 0) + 2;
+                applyTone("complimentary", { targetNpc: girl });
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_single_sleepover");
+              }
+            },
+            {
+              label: `Tease her lightly—"Careful, people might start talking if you stay past midnight."`,
+              action: () => {
+                state.rep[girl] = (state.rep[girl] || 0) + 2;
+                applyTone("tease", { targetNpc: girl });
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_single_sleepover");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 2) {
+        return {
+          text: [
+            `${name} borrows one of your oversized hoodies, tugging the sleeves over her wrists as low music hums from your desk speaker. Without anyone else in the room watching, she drops every bit of campus armor.`
+          ],
+          choices: [
+            {
+              label: "Sit beside her and let the conversation flow without forcing anything.",
+              action: () => {
+                state.rep[girl] = (state.rep[girl] || 0) + 2;
+                state.control = clamp(state.control + 2, 0, 100);
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_single_sleepover");
+              }
+            },
+            {
+              label: "Pull back and act cold—killing the warmth in the room.",
+              action: () => {
+                state.rep[girl] = (state.rep[girl] || 0) - 8;
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_single_sleepover");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 3) {
+        return {
+          text: [
+            `Halfway through a late-night card round on the mattress, ${name} leans her shoulder against yours, tilting her face up so her eyes meet yours under the warm desk lamp.`
+          ],
+          choices: [
+            {
+              label: "Hold eye contact steadily and match her closeness.",
+              action: () => {
+                state.rep[girl] = (state.rep[girl] || 0) + 2;
+                state.aura = clamp(state.aura + 2, 0, 100);
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_single_sleepover");
+              }
+            },
+            {
+              label: "Brush her off awkwardly and check your phone.",
+              action: () => {
+                state.rep[girl] = (state.rep[girl] || 0) - 8;
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_single_sleepover");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 4) {
+        return {
+          text: [
+            `The desk lamp clicks off into silver streetlight through the blinds. ${name} shifts closer under the blanket, her fingers tracing lightly across your wrist.`
+          ],
+          choices: [
+            {
+              label: "Lean in and kiss her slowly—unhurried and present.",
+              action: () => {
+                state.rep[girl] = (state.rep[girl] || 0) + 3;
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_single_sleepover");
+              }
+            },
+            {
+              label: "Turn over to the far edge of the bed and tell her you're going to sleep.",
+              action: () => {
+                state.rep[girl] = (state.rep[girl] || 0) - 8;
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_single_sleepover");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 5) {
+        return {
+          text: [
+            `${name}'s breath catches softly against your collarbone as the space between you disappears completely, testing whether the spark holds all the way through the night.`
+          ],
+          choices: [
+            {
+              label: "Stay locked in with her—steady, magnetic, and completely in sync.",
+              action: () => {
+                state.rep[girl] = (state.rep[girl] || 0) + 2;
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_single_sleepover");
+              }
+            }
+          ]
+        };
+      }
+
+      // Beat 6: Check if she is still HOT at the end of the 6 story beats
+      const stillHot = isGirlHot(girl, state);
+
+      if (!state.mem.singleSleepoverResolved) {
+        state.mem.singleSleepoverResolved = true;
+        if (stillHot) {
+          state.mem.girlfriend = girl;
+          state.mem.datingNonNegotiable = true;
+          state.rep[girl] = (state.rep[girl] || 0) + 6;
+          recordChoiceMemory(
+            `ep2_single_sleepover_bf_${girl}`,
+            girl,
+            `Kept ${name} in HOT through the 1-on-1 sleepover, triggering a romantic SFW sex scene and non-negotiable boyfriend status.`
+          );
+        } else {
+          recordChoiceMemory(
+            `ep2_single_sleepover_cooled_${girl}`,
+            girl,
+            `Lost ${name}'s HOT standing during the 1-on-1 sleepover, ending the night quietly without intimacy.`
+          );
+        }
+      }
+
+      return {
+        text: stillHot
+          ? [
+              `Because you kept ${name} in HOT all the way to the final beat, the night unfolds into an intimate, unhurried romantic SFW sex scene behind closed doors.`,
+              `When morning light filters across the pillows, ${name} rests her chin against your chest with a firm, unmistakable smile: "Just so we're clear—you're my boyfriend now. Non-negotiable."`
+            ]
+          : [
+              `Because the spark cooled before the final beat and ${name} dropped out of HOT, the two of you simply pull the blankets up and fall asleep side by side without taking things further.`
+            ],
+        choices: [
+          {
+            label: "Step out into the quiet morning quad as the night closes →",
+            action: () => {
+              ep2TransitionToScene("ep2_night2_close");
+            }
+          }
+        ]
+      };
+    }
+  },
+
+  // ==========================================================================
+  // BONUS SCENE A: MULTI-PERSON SLEEPOVER (6 BEATS PER IN-SCENE PERSON)
+  // Stacked check at end: High Aura + All Girls HOT + Chloe in PURSUE (if present) +
+  // High Emotional Control + Uber Cash ($25/girl) -> Threesome/Foursome/Fivesome + Uber Home
+  // Otherwise -> Normal sleepover where everyone goes to bed
   // ==========================================================================
   ep2_sleepover_setup: {
     id: "ep2_sleepover_setup",
     chapter: "CHAPTER I · BONUS CHAPTER",
-    title: "The Sleepover Roster",
+    title: "Multi-Person Sleepover Roster",
     presentNPCs: ["chloe", "maya", "brandy", "mandy"],
-    render: () => ({
-      text: [
-        "Before heading back to the residence hall suite, the girls look to you to lock in who's actually coming upstairs. Some combinations click naturally; others bring clashing egos into a locked room where only high Emotional Control keeps the night from imploding."
-      ],
-      choices: [
-        {
-          label: "Good Combo: Invite Chloe & Maya — childhood best friends with grounded, effortless chemistry.",
-          action: () => {
-            state.mem.sleepoverCombo = "good";
-            state.mem.sleepoverGroup = ["chloe", "maya"];
-            startGetToKnowYouArc("ep2_bonus_sleepover_arc", "chloe", "ep2_finale_dossier", 10);
-            goToScene("ep2_bonus_sleepover");
+    render: () => {
+      const rosterPool = ["chloe", "maya", "brandy", "mandy"];
+      if (knowsLaura(state)) rosterPool.push("laura");
+      const hotPool = rosterPool.filter((g) => isGirlHot(g, state));
+
+      const threeGroup = hotPool.slice(0, 3);
+      const fourGroup = hotPool.slice(0, 4);
+      const fiveGroup = hotPool.slice(0, 5);
+
+      return {
+        text: [
+          "Before heading upstairs to the suite, the girls look to you to lock in the multi-person sleepover roster. Each girl present adds 6 story beats—and pulling off a threesome, foursome, or fivesome requires stacking High Aura, every girl HOT, Chloe in PURSUE (if present), High Emotional Control, and enough cash ($25 per girl) to call everyone an Uber home afterward."
+        ],
+        choices: [
+          {
+            label: "2-Person Sleepover: Chloe & Maya (12 Story Beats total).",
+            action: () => {
+              const group = ["chloe", "maya"];
+              state.mem.sleepoverGroup = group;
+              startGetToKnowYouArc("ep2_bonus_sleepover_arc", "chloe", "ep2_night2_close", group.length * 6);
+              goToScene("ep2_bonus_sleepover");
+            }
+          },
+          {
+            label: "2-Person Sleepover: Brandy & Mandy (12 Story Beats total).",
+            action: () => {
+              const group = ["brandy", "mandy"];
+              state.mem.sleepoverGroup = group;
+              startGetToKnowYouArc("ep2_bonus_sleepover_arc", "brandy", "ep2_night2_close", group.length * 6);
+              goToScene("ep2_bonus_sleepover");
+            }
+          },
+          ...(threeGroup.length >= 3
+            ? [
+                {
+                  label: `3-Person Sleepover (${threeGroup.map((g) => CHARACTERS[g]?.name || g).join(", ")}) — 18 Story Beats & Threesome Check.`,
+                  action: () => {
+                    state.mem.sleepoverGroup = threeGroup;
+                    startGetToKnowYouArc("ep2_bonus_sleepover_arc", threeGroup[0], "ep2_night2_close", threeGroup.length * 6);
+                    goToScene("ep2_bonus_sleepover");
+                  }
+                }
+              ]
+            : []),
+          ...(fourGroup.length >= 4
+            ? [
+                {
+                  label: `4-Person Sleepover (${fourGroup.map((g) => CHARACTERS[g]?.name || g).join(", ")}) — 24 Story Beats & Foursome Check.`,
+                  action: () => {
+                    state.mem.sleepoverGroup = fourGroup;
+                    startGetToKnowYouArc("ep2_bonus_sleepover_arc", fourGroup[0], "ep2_night2_close", fourGroup.length * 6);
+                    goToScene("ep2_bonus_sleepover");
+                  }
+                }
+              ]
+            : []),
+          ...(fiveGroup.length >= 5
+            ? [
+                {
+                  label: `5-Person Sleepover (${fiveGroup.map((g) => CHARACTERS[g]?.name || g).join(", ")}) — 30 Story Beats & Fivesome Check.`,
+                  action: () => {
+                    state.mem.sleepoverGroup = fiveGroup;
+                    startGetToKnowYouArc("ep2_bonus_sleepover_arc", fiveGroup[0], "ep2_night2_close", fiveGroup.length * 6);
+                    goToScene("ep2_bonus_sleepover");
+                  }
+                }
+              ]
+            : []),
+          {
+            label: "Step back to the courtyard before locking in the roster.",
+            action: () => {
+              ep2TransitionToScene("ep2_winding_down");
+            }
           }
-        },
-        {
-          label: "Good Combo: Invite Brandy & Mandy — twin rhythm and high-energy banter that flows naturally.",
-          action: () => {
-            state.mem.sleepoverCombo = "good";
-            state.mem.sleepoverGroup = ["brandy", "mandy"];
-            startGetToKnowYouArc("ep2_bonus_sleepover_arc", "brandy", "ep2_finale_dossier", 10);
-            goToScene("ep2_bonus_sleepover");
-          }
-        },
-        {
-          label: "Volatile / Bad Combo: Put Chloe, Brandy, and Mandy in the same suite—testing your Emotional Control under pressure.",
-          action: () => {
-            state.mem.sleepoverCombo = "bad";
-            state.mem.sleepoverGroup = ["chloe", "brandy", "mandy"];
-            startGetToKnowYouArc("ep2_bonus_sleepover_arc", "chloe", "ep2_finale_dossier", 10);
-            goToScene("ep2_bonus_sleepover");
-          }
-        }
-      ]
-    })
+        ]
+      };
+    }
   },
 
   ep2_bonus_sleepover: {
@@ -807,65 +1201,42 @@ const EPISODE2_PART2_SCENES = {
     title: "After-Hours Group Sleepover",
     presentNPCs: ["chloe", "maya", "brandy", "mandy"],
     render: () => {
-      state.presentNPCs = state.mem.sleepoverGroup || ["chloe", "maya"];
-      const arc = state.activeArc || startGetToKnowYouArc("ep2_bonus_sleepover_arc", "chloe", "ep2_finale_dossier", 10);
+      const group = state.mem.sleepoverGroup || ["chloe", "maya"];
+      state.presentNPCs = group;
+      const totalBeats = group.length * 6;
+      const arc = state.activeArc || startGetToKnowYouArc("ep2_bonus_sleepover_arc", group[0], "ep2_night2_close", totalBeats);
       const beat = arc.beatIndex;
-      const isBadCombo = state.mem.sleepoverCombo === "bad";
-      const highControl = state.control >= 58;
-      const goodNight = !isBadCombo || highControl;
 
-      const goodNightBeats = [
-        "The suite door locks behind you, shutting out the campus noise. Shoes are kicked by the mat and oversized hoodies replace campus jackets.",
-        "Low R&B plays softly from a phone speaker on the coffee table while snacks and cold drinks get spread across the rug.",
-        "Without the fresher cohort watching, every guarded posture melts—laughter comes easy, unhurried, and genuine.",
-        "You deal out a late-night card game on the floor cushions, keeping the banter sharp without forcing a single beat.",
-        "Halfway through the round, side glances linger a fraction longer under the warm amber desk lamp.",
-        isBadCombo
-          ? "When a sharp remark between Brandy and Chloe threatens to spike the temperature in the room, your high Emotional Control reads it instantly—you redirect with dry, effortless humor that dissolves the tension before it ignites."
-          : "The natural chemistry between the girls keeps the room relaxed, teasing, and completely free of ego.",
-        "Pillows and blankets get pulled across the common-room floor as midnight turns into 1:30 AM.",
-        "Whispered confessions and playful dares trade back and forth in the dim glow while rain taps softly against the window glass.",
-        "Warm hands, tangled blankets, and magnetic closeness linger as the lamp clicks off into silver streetlight.",
-        "GOOD NIGHT — Dawn filters through the blinds over a tangle of pillows and sleeping silhouettes, sealing a standout Chapter One finish."
-      ];
+      // 6 story beats per in-scene person
+      const personIdx = Math.min(group.length - 1, Math.floor((beat - 1) / 6));
+      const personBeat = ((beat - 1) % 6) + 1;
+      const currentGirl = group[personIdx];
+      const currentName = CHARACTERS[currentGirl] ? CHARACTERS[currentGirl].name : currentGirl;
 
-      const badNightBeats = [
-        "The suite door clicks shut, and within five minutes it's obvious that putting Chloe, Brandy, and Mandy in one room without enough Emotional Control was lighting a match near dry kindling.",
-        "Brandy drops a pointed comment about 'girls who act unbothered until someone else gets attention,' and Chloe's jaw tightens immediately.",
-        "Mandy smirks into her cup, stoking the silence instead of defusing it.",
-        "You try to steer the conversation back to a card game on the rug, but every line lands flat in the thick air.",
-        "When Chloe catches Brandy glancing at your phone screen, the polite veneer evaporates completely.",
-        "Your Emotional Control slips under the crossfire—you over-explain instead of holding frame, making both sides roll their eyes.",
-        "Brandy and Mandy grab their jackets off the sofa back by 11:30 PM, offering a razor-thin 'We're good' at the door.",
-        "Chloe stays behind for three quiet, icy minutes before gathering her boots without looking your way.",
-        "The suite door latches shut, leaving you staring at an untouched deck of cards under the harsh overhead light.",
-        "BAD NIGHT — Poor combo chemistry and low Emotional Control fractured the sleepover before midnight."
-      ];
+      if (beat < totalBeats) {
+        const beatScripts = [
+          `[Beat ${beat}/${totalBeats} — ${currentName} (1/6)] Inside the locked suite, ${currentName} kicks off her shoes and settles onto the floor cushions as low R&B plays from the speaker.`,
+          `[Beat ${beat}/${totalBeats} — ${currentName} (2/6)] ${currentName} trades quick, playful banter with the room while glancing across the coffee table to see how effortlessly you hold the group's attention.`,
+          `[Beat ${beat}/${totalBeats} — ${currentName} (3/6)] During a late-night card round, ${currentName} leans in close against your shoulder, letting her hand linger on your knee under the warm lamp light.`,
+          `[Beat ${beat}/${totalBeats} — ${currentName} (4/6)] Even with multiple girls sharing the same room, ${currentName}'s guard drops completely as the conversation turns candid and unhurried.`,
+          `[Beat ${beat}/${totalBeats} — ${currentName} (5/6)] ${currentName} locks eyes with you across the dim glow of the room, matching the rising electric tension without breaking frame.`,
+          `[Beat ${beat}/${totalBeats} — ${currentName} (6/6)] As ${currentName}'s spotlight beat wraps up, the whole suite feels charged—every girl present watching to see how you steer the rest of the night.`
+        ];
 
-      const activeBeats = goodNight ? goodNightBeats : badNightBeats;
-
-      if (beat === 10 && !state.mem.sleepoverResolved) {
-        state.mem.sleepoverResolved = true;
-        if (goodNight) {
-          state.aura = clamp(state.aura + 4, 0, 100);
-          adjustChloeMatrix(3, 2);
-          recordChoiceMemory("ep2_sleepover_good_night", "chloe", "Pulled off a Good Night at the after-hours Group Sleepover.");
-        } else {
-          state.aura = clamp(state.aura - 4, 0, 100);
-          adjustChloeMatrix(-4, -5);
-          state.rep.brandy -= 4;
-          state.rep.mandy -= 4;
-          recordChoiceMemory("ep2_sleepover_bad_night", "chloe", "Lost control of a volatile girl combo during the Group Sleepover, ending in a Bad Night.");
-        }
-      }
-
-      if (beat < 10) {
         return {
-          text: [activeBeats[beat - 1]],
+          text: [beatScripts[personBeat - 1]],
           choices: [
             {
-              label: goodNight ? "Keep your composure steady and play the moment smoothly." : "Try to steady the room as the tension climbs.",
+              label:
+                currentGirl === "chloe"
+                  ? ep2ChloeChoiceLabel(
+                      "Keep your Emotional Control sharp and match Chloe's forward PURSUE energy.",
+                      "Keep your Emotional Control sharp and hold Chloe's attention calmly in CONTROL."
+                    )
+                  : `Keep your Emotional Control sharp and hold ${currentName}'s interest.`,
               action: () => {
+                state.rep[currentGirl] = (state.rep[currentGirl] || 0) + 1;
+                if (currentGirl === "chloe") adjustChloeMatrix(1, 1);
                 advanceGetToKnowYouBeat();
                 goToScene("ep2_bonus_sleepover");
               }
@@ -874,14 +1245,69 @@ const EPISODE2_PART2_SCENES = {
         };
       }
 
+      // Final Beat: Stacked requirement check across all in-scene girls
+      const uberCost = group.length * 25;
+      const hasHighAura = state.aura >= 62;
+      const allGirlsHot = group.every((g) => isGirlHot(g, state));
+      const chloePresent = group.includes("chloe");
+      const chloePursueOk = !chloePresent || state.chloeMode === "PURSUE";
+      const hasHighControl = state.control >= 58;
+      const hasUberCash = (state.cash || 0) >= uberCost;
+
+      const groupIntimacyUnlocked =
+        group.length >= 3 &&
+        hasHighAura &&
+        allGirlsHot &&
+        chloePursueOk &&
+        hasHighControl &&
+        hasUberCash;
+
+      const labelMap = {
+        3: "Threesome",
+        4: "Foursome",
+        5: "Fivesome"
+      };
+      const eventLabel = labelMap[group.length] || "Group Intimacy";
+
+      if (!state.mem.sleepoverResolved) {
+        state.mem.sleepoverResolved = true;
+        if (groupIntimacyUnlocked) {
+          state.cash = Math.max(0, (state.cash || 0) - uberCost);
+          state.aura = clamp(state.aura + 5, 0, 100);
+          group.forEach((g) => {
+            state.rep[g] = (state.rep[g] || 0) + 5;
+          });
+          if (chloePresent) adjustChloeMatrix(4, 4);
+          recordChoiceMemory(
+            `ep2_sleepover_${eventLabel.toLowerCase()}`,
+            group[0],
+            `Passed all stacked checks (${eventLabel}) with ${group.map((g) => CHARACTERS[g]?.name || g).join(", ")} and ordered Ubers home ($${uberCost}) afterward.`
+          );
+        } else {
+          state.aura = clamp(state.aura + 2, 0, 100);
+          if (chloePresent) adjustChloeMatrix(2, 1);
+          recordChoiceMemory(
+            "ep2_sleepover_normal_bed",
+            group[0],
+            "Finished the multi-person sleepover beats without triggering group intimacy; everyone went to bed normally."
+          );
+        }
+      }
+
       return {
-        text: [activeBeats[9]],
+        text: groupIntimacyUnlocked
+          ? [
+              `[Beat ${totalBeats}/${totalBeats} — ${eventLabel.toUpperCase()} & UBER SEND-OFF] Every stacked condition locks into place: High Aura, every girl in the room HOT, Chloe in PURSUE, High Emotional Control, and $${uberCost} ready for Ubers.`,
+              `The night escalates into an unforgettable romantic SFW ${eventLabel.toLowerCase()} behind the locked suite door—and because nobody stays overnight after a ${eventLabel.toLowerCase()}, you call Ubers ($${uberCost}) so every girl gets home safely before dawn.`
+            ]
+          : [
+              `[Beat ${totalBeats}/${totalBeats} — NORMAL SLEEPOVER] Without all stacked requirements aligned (High Aura, every girl HOT, Chloe in PURSUE, High Emotional Control, and $${uberCost} Uber fare), the night stays low-key—everyone claims pillows and blankets across the suite and goes to bed.`
+            ],
         choices: [
           {
-            label: "Unlock Chapter One Finale Dossier →",
+            label: "Head out into the quiet morning quad as the sleepover wraps →",
             action: () => {
-              advanceGetToKnowYouBeat();
-              goToScene("ep2_finale_dossier");
+              ep2TransitionToScene("ep2_night2_close");
             }
           }
         ]
@@ -890,82 +1316,605 @@ const EPISODE2_PART2_SCENES = {
   },
 
   // ==========================================================================
-  // BONUS SCENE B: PRIVATE DORM NIGHT WITH CHLOE (EXTENDED 10 STORY BEATS)
+  // BONUS SCENE B: CHLOE ALONE SLEEPOVER ROUTER & 6-BEAT SCENE
+  // - If VIP party invite passes: option to invite her to party ->
+  //     * If Chloe is girlfriend: she refuses party & stays for 6-beat scene -> choice of Cuddle OR SFW sex scene
+  //     * If not girlfriend: routes to bonus party scene with Max (ep2_vip_with_chloe)
+  // - If not girlfriend & no party invite (or skipped): default 6-beat scene with Chloe ->
+  //     * Checks SleptWithChloe first, then rejectedBoyfriend:
+  //         - If SleptWithChloe === false: High Tension -> SFW sex scene; else High Comfort -> Cuddle; else Separate beds
+  //         - If SleptWithChloe === true && rejectedBoyfriend: High Comfort -> Warm end; else she cries, leaves, & calls you a womanizer
   // ==========================================================================
-  ep2_bonus_chloe_dorm: {
-    id: "ep2_bonus_chloe_dorm",
+  ep2_chloe_alone_sleepover_router: {
+    id: "ep2_chloe_alone_sleepover_router",
+    chapter: "CHAPTER I · BONUS CHAPTER",
+    title: "Alone With Chloe",
+    presentNPCs: ["chloe"],
+    render: () => {
+      const hasPartyInvite = ep2HasVipMixerAccess();
+      const isGirlfriend = ep2IsChloeGirlfriend();
+
+      return {
+        text: [
+          ep2ChloeModeLine(
+            "Away from the pavilion crowd, Chloe stops beneath the residence archway, tilting her golden head toward you with a warm, lingering gaze as distant bass from the VIP Mixer carries across the quad.",
+            "Away from the pavilion crowd, Chloe stops beneath the residence archway, tilting her golden head toward you with a poised, unreadable look as distant bass from the VIP Mixer carries across the quad."
+          )
+        ],
+        choices: [
+          ...(hasPartyInvite
+            ? [
+                {
+                  label: "Invite Chloe to the VIP Mixer Party.",
+                  action: () => {
+                    if (isGirlfriend) {
+                      state.mem.chloeAloneMode = "gf_refused_party";
+                      startGetToKnowYouArc("ep2_chloe_alone_arc", "chloe", "ep2_night2_close", 6);
+                      goToScene("ep2_chloe_alone_sleepover");
+                    } else {
+                      state.mem.vipMode = "with_chloe";
+                      startGetToKnowYouArc("ep2_bonus_vip_chloe_arc", "chloe", "ep2_night2_close", 10);
+                      goToScene("ep2_vip_with_chloe");
+                    }
+                  }
+                }
+              ]
+            : []),
+          {
+            label: "Skip the party and spend the night alone with Chloe (6 Story Beats).",
+            action: () => {
+              state.mem.chloeAloneMode = isGirlfriend ? "gf_refused_party" : "default_matrix";
+              startGetToKnowYouArc("ep2_chloe_alone_arc", "chloe", "ep2_night2_close", 6);
+              goToScene("ep2_chloe_alone_sleepover");
+            }
+          },
+          {
+            label: "Step back toward the pavilion path instead.",
+            action: () => {
+              ep2TransitionToScene("ep2_winding_down");
+            }
+          }
+        ]
+      };
+    }
+  },
+
+  ep2_chloe_alone_sleepover: {
+    id: "ep2_chloe_alone_sleepover",
     chapter: "CHAPTER I · BONUS CHAPTER",
     title: "Behind Closed Doors — Chloe",
     presentNPCs: ["chloe"],
     render: () => {
-      const arc = state.activeArc || startGetToKnowYouArc("ep2_bonus_chloe_arc", "chloe", "ep2_finale_dossier", 10);
+      const arc = state.activeArc || startGetToKnowYouArc("ep2_chloe_alone_arc", "chloe", "ep2_night2_close", 6);
       const beat = arc.beatIndex;
+      const mode = state.mem.chloeAloneMode || (ep2IsChloeGirlfriend() ? "gf_refused_party" : "default_matrix");
 
       if (beat === 1) {
         return {
           text: [
-            "Away from the pavilion crowd, Chloe stops beneath the archway between the east and west residence halls, tilting her golden head toward you with a slow, deliberate smile. \"My roommate's at the mixer till two—or we can take your room. Your call.\""
+            mode === "gf_refused_party"
+              ? ep2ChloeModeLine(
+                  "Chloe shakes her head with a knowing, affectionate smirk as she loops her fingers through yours. \"Forget that party—I'm already yours, and I'd rather stay locked in with you tonight.\" Inside the room, the heavy door clicks shut.",
+                  "Chloe shakes her head with a cool, self-assured smirk as she loops her fingers through yours. \"Forget that party—I'm already yours, and I'd rather stay locked in with you tonight.\" Inside the room, the heavy door clicks shut."
+                )
+              : ep2ChloeModeLine(
+                  "Inside the dorm room, the heavy door clicks shut, sealing out the campus noise. Chloe drops her leather jacket over the desk chair, kicks off her boots, and looks over at you with open curiosity.",
+                  "Inside the dorm room, the heavy door clicks shut, sealing out the campus noise. Chloe drops her leather jacket over the desk chair, kicks off her boots, and keeps her posture measured."
+                )
           ],
           choices: [
             {
-              label: "\"Your dorm—let's see what Chloe Reed's space actually looks like behind the armor.\"",
+              label: "Settle in beside her as the room quiets down.",
               action: () => {
-                state.mem.dormChoice = "Chloe's dorm";
-                adjustChloeMatrix(2, 2);
+                adjustChloeMatrix(1, 1);
                 advanceGetToKnowYouBeat();
-                goToScene("ep2_bonus_chloe_dorm");
+                goToScene("ep2_chloe_alone_sleepover");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 2) {
+        return {
+          text: [
+            ep2ChloeModeLine(
+              "Without an audience to perform for, Chloe's sharp campus armor softens into quiet, unhurried candor as she leans toward you on the edge of the bed.",
+              "Without an audience to perform for, Chloe stays composed and observant as she sits beside you on the edge of the bed, testing whether you'll earn her trust or chase reactions."
+            )
+          ],
+          choices: [
+            {
+              label: "Keep the banter warm and grounded—building Comfort.",
+              action: () => {
+                adjustChloeMatrix(3, 0);
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_chloe_alone_sleepover");
               }
             },
             {
-              label: "\"Mine—quieter hallway, zero interruptions.\"",
+              label: "Hold her gaze with a slow, teasing smirk—building Tension.",
               action: () => {
-                state.mem.dormChoice = "Your dorm";
-                adjustChloeMatrix(1, 3);
+                adjustChloeMatrix(0, 3);
                 advanceGetToKnowYouBeat();
-                goToScene("ep2_bonus_chloe_dorm");
+                goToScene("ep2_chloe_alone_sleepover");
               }
             }
           ]
         };
       }
 
-      const dormBeats = [
-        "",
-        `Inside ${state.mem.dormChoice || "the room"}, the heavy door clicks shut, sealing out the campus noise. Chloe drops her leather jacket over the desk chair and kicks off her boots.`,
-        "Without an audience to perform for, her dry sarcasm softens into quiet, unhurried candor as she sits beside you on the edge of the bed.",
-        "She pulls out a small portfolio of editorial fashion layouts she hasn't shown anyone on campus yet, watching your face as you turn the pages.",
-        "When you give her an honest, grounded critique instead of empty flattery, the last wall between you drops completely.",
-        "Chloe leans in closer, her fingers catching the front of your collar as she looks up through lowered lashes.",
-        "The space between you closes in slow, deliberate heat—her pulse fluttering against your thumb along her jawline.",
-        "Shadows stretch across the ceiling as the desk lamp clicks off, leaving only the silver streetlight through the blinds.",
-        "Breath tangles with breath in unhurried, magnetic closeness before the night fades smoothly into silence.",
-        "Morning light breaks across the quiet room—Chapter One complete."
-      ];
-
-      if (beat < 10) {
+      if (beat === 3) {
         return {
-          text: [dormBeats[beat - 1]],
+          text: [
+            "She pulls out a small portfolio of editorial fashion layouts she hasn't shown anyone else on campus, watching your face closely as you flip through the pages."
+          ],
           choices: [
             {
-              label: "Stay present in the moment—unhurried and in control.",
+              label: "Give her an honest, grounded critique that shows you actually pay attention.",
               action: () => {
-                adjustChloeMatrix(2, 2);
+                adjustChloeMatrix(3, 1);
                 advanceGetToKnowYouBeat();
-                goToScene("ep2_bonus_chloe_dorm");
+                goToScene("ep2_chloe_alone_sleepover");
               }
             }
           ]
         };
+      }
+
+      if (beat === 4) {
+        return {
+          text: [
+            "The desk lamp clicks off into silver streetlight through the blinds. Chloe leans back against the pillows, leaving the space between you charged and open."
+          ],
+          choices: [
+            {
+              label: "Close the distance slowly—letting the moment breathe.",
+              action: () => {
+                adjustChloeMatrix(1, 2);
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_chloe_alone_sleepover");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 5) {
+        return {
+          text: [
+            "Chloe's fingers catch the front of your collar as she looks up through lowered lashes, her pulse fluttering softly against your thumb along her jawline."
+          ],
+          choices: [
+            {
+              label: "Stay present with her as the final beat of the night arrives.",
+              action: () => {
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_chloe_alone_sleepover");
+              }
+            }
+          ]
+        };
+      }
+
+      // Beat 6: Resolution
+      if (mode === "gf_refused_party") {
+        return {
+          text: [
+            "With Chloe already your girlfriend and refusing the VIP party to stay with you, the end of the night is completely your call."
+          ],
+          choices: [
+            {
+              label: "Pull her close for a warm, unhurried Cuddle through the night.",
+              action: () => {
+                adjustChloeMatrix(4, 1);
+                recordChoiceMemory("ep2_chloe_gf_cuddle", "chloe", "Chloe turned down the VIP party to stay with you and spent the night cuddling.");
+                ep2TransitionToScene("ep2_night2_close");
+              }
+            },
+            {
+              label: "Initiate an intimate, romantic SFW sex scene with Chloe.",
+              action: () => {
+                state.mem.sleptWithChloe = true;
+                adjustChloeMatrix(3, 4);
+                recordChoiceMemory("ep2_chloe_gf_sfw", "chloe", "Chloe turned down the VIP party to stay with you and shared a romantic SFW sex scene.");
+                ep2TransitionToScene("ep2_night2_close");
+              }
+            }
+          ]
+        };
+      }
+
+      // Default Chloe sleepover (not girlfriend): check SleptWithChloe first, then rejectedBoyfriend
+      const sleptWithChloe = ep2SleptWithChloe();
+      const rejectedBf = ep2RejectedChloeBoyfriend();
+      const highTension = state.tension >= 24;
+      const highComfort = state.comfort >= 20;
+
+      if (!sleptWithChloe) {
+        if (highTension) {
+          if (!state.mem.chloeAloneResolved) {
+            state.mem.chloeAloneResolved = true;
+            state.mem.sleptWithChloe = true;
+            adjustChloeMatrix(2, 4);
+            recordChoiceMemory("ep2_chloe_first_sfw", "chloe", "Hit High Tension after the 6-beat sleepover with Chloe and triggered a romantic SFW sex scene.");
+          }
+          return {
+            text: [
+              "Because you hadn't slept with Chloe yet and pushed her Tension high by the end of the sixth beat, the last bit of restraint snaps—unfolding into a charged, romantic SFW sex scene before morning light breaks over the room."
+            ],
+            choices: [
+              {
+                label: "Step out into the morning quad as the night closes →",
+                action: () => {
+                  ep2TransitionToScene("ep2_night2_close");
+                }
+              }
+            ]
+          };
+        }
+
+        if (highComfort) {
+          if (!state.mem.chloeAloneResolved) {
+            state.mem.chloeAloneResolved = true;
+            adjustChloeMatrix(4, 0);
+            recordChoiceMemory("ep2_chloe_cuddle_end", "chloe", "Reached High Comfort with Chloe after the 6-beat sleepover, ending in a warm cuddle.");
+          }
+          return {
+            text: [
+              "Tension stayed below the threshold, but your High Comfort with Chloe carries the night—she curls up against your chest under the blankets for a quiet, unguarded cuddle until dawn."
+            ],
+            choices: [
+              {
+                label: "Step out into the morning quad as the night closes →",
+                action: () => {
+                  ep2TransitionToScene("ep2_night2_close");
+                }
+              }
+            ]
+          };
+        }
+
+        if (!state.mem.chloeAloneResolved) {
+          state.mem.chloeAloneResolved = true;
+          recordChoiceMemory("ep2_chloe_separate_beds", "chloe", "Neither High Tension nor High Comfort passed with Chloe; ended in a separate-bed sleepover.");
+        }
+        return {
+          text: [
+            "With neither High Tension nor High Comfort locked in by the final beat, Chloe offers a polite goodnight and takes the separate bed across the room—leaving the night unfinished."
+          ],
+          choices: [
+            {
+              label: "Step out into the morning quad as the night closes →",
+              action: () => {
+                ep2TransitionToScene("ep2_night2_close");
+              }
+            }
+          ]
+        };
+      }
+
+      // SleptWithChloe === true
+      if (rejectedBf && !highComfort) {
+        if (!state.mem.chloeAloneResolved) {
+          state.mem.chloeAloneResolved = true;
+          adjustChloeMatrix(-8, -6);
+          state.rep.chloe -= 8;
+          state.mem.bitter_meltdown = true;
+          recordChoiceMemory("ep2_chloe_womanizer_walkout", "chloe", "Slept with Chloe previously, rejected boyfriend status, and lacked High Comfort—she cried, called you a womanizer, and walked out.");
+        }
+        return {
+          text: [
+            "Because you already slept with Chloe, rejected being her boyfriend, and didn't build High Comfort by the sixth beat, the weight of it hits her all at once.",
+            "Tears spill down Chloe's cheeks as she grabs her jacket off the chair, her voice breaking in anger: \"You already got what you wanted and couldn't even call me yours—you're just a womanizer.\" She walks out and slams the door behind her."
+          ],
+          choices: [
+            {
+              label: "Step out into the quiet quad after she leaves →",
+              action: () => {
+                ep2TransitionToScene("ep2_night2_close");
+              }
+            }
+          ]
+        };
+      }
+
+      if (!state.mem.chloeAloneResolved) {
+        state.mem.chloeAloneResolved = true;
+        adjustChloeMatrix(4, 2);
+        recordChoiceMemory("ep2_chloe_high_comfort_stay", "chloe", "Maintained High Comfort with Chloe after sleeping together previously; she stayed the night calmly.");
+      }
+      return {
+        text: [
+          "Because you held High Comfort with Chloe even after turning down the boyfriend label earlier, she stays curled beside you through the night without drama—resting her head on your shoulder until morning."
+        ],
+        choices: [
+          {
+            label: "Step out into the morning quad as the night closes →",
+            action: () => {
+              ep2TransitionToScene("ep2_night2_close");
+            }
+          }
+        ]
+      };
+    }
+  },
+
+  // ==========================================================================
+  // BONUS SCENE C0: VIP MIXER PARTY — ANONYMOUS INVITE -> ALLY (4 BEATS) + BRANDON (6 BEATS)
+  // ==========================================================================
+  ep2_vip_ally: {
+    id: "ep2_vip_ally",
+    chapter: "CHAPTER I · BONUS CHAPTER",
+    title: "VIP Mixer — Ally's Guest List",
+    presentNPCs: ["ally"],
+    render: () => {
+      const arc = state.activeArc || startGetToKnowYouArc("ep2_bonus_vip_ally_arc", "ally", "ep2_night2_close", 10);
+      const beat = arc.beatIndex;
+      const brandonStanding = ep2BrandonStanding();
+
+      if (beat === 1) {
+        state.presentNPCs = ["ally"];
+        return {
+          text: [
+            "Following the anonymous message from the end of Episode One past the velvet rope of the VIP Mixer, a sharp-dressed second-year girl with sleek dark hair and an eager, spotlight-seeking grin waves you over.",
+            "\"I'm Ally,\" she says, leaning close with an over-practiced 'so different from other girls' smile. \"I actually put this whole VIP party together—and I'm the one who sent that anonymous invite because I've been hearing good rumors about you. Honestly, half the upperclassmen here—especially Tanya—act way too uptight.\""
+          ],
+          choices: [
+            {
+              label: "\"Appreciate the invite, Ally. You went all out setting this lounge up.\"",
+              action: () => {
+                state.rep.ally = (state.rep.ally || 0) + 4;
+                applyTone("complimentary", { targetNpc: "ally" });
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_vip_ally");
+              }
+            },
+            {
+              label: "\"Good rumors travel fast around here—or you just like curating your own crowd.\"",
+              action: () => {
+                state.rep.ally = (state.rep.ally || 0) + 4;
+                applyTone("tease", { targetNpc: "ally" });
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_vip_ally");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 2) {
+        state.presentNPCs = ["ally"];
+        return {
+          text: [
+            "Ally waves off a waiter with a breezy flick of her wrist, tilting her head so her sleek hair catches the warm lounge light. \"Most guys here just try to impress Tanya to look important,\" she says, slipping into an eager pick-me pitch. \"I'm not like those stiff council types at all—I actually pay attention when someone stands out.\""
+          ],
+          choices: [
+            {
+              label: "\"So throwing a rival VIP party is your way of proving you don't need the council title.\"",
+              action: () => {
+                state.rep.ally = (state.rep.ally || 0) + 3;
+                state.control = clamp(state.control + 2, 0, 100);
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_vip_ally");
+              }
+            },
+            {
+              label: "\"Fair enough—you definitely know how to get yourself noticed in a room.\"",
+              action: () => {
+                state.rep.ally = (state.rep.ally || 0) + 3;
+                state.aura = clamp(state.aura + 2, 0, 100);
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_vip_ally");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 3) {
+        state.presentNPCs = ["ally"];
+        return {
+          text: [
+            "Bass thumps softly behind the glass partition while Ally leans against the high bar, watching how effortlessly you hold the room's attention. \"I knew the rumors weren't exaggerating,\" she says softly, dropping her voice just enough to feel conspiratorial. \"Most people talk big until the lights actually come on.\""
+          ],
+          choices: [
+            {
+              label: "\"Rumors usually miss half the picture. Better to see how people move in person.\"",
+              action: () => {
+                state.rep.ally = (state.rep.ally || 0) + 3;
+                state.mastery = clamp(state.mastery + 2, 0, 100);
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_vip_ally");
+              }
+            },
+            {
+              label: "\"Good thing I showed up to test the theory then.\"",
+              action: () => {
+                state.rep.ally = (state.rep.ally || 0) + 3;
+                state.aura = clamp(state.aura + 2, 0, 100);
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_vip_ally");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 4) {
+        state.presentNPCs = ["ally"];
+        return {
+          text: [
+            "Ally smiles brightly as she glances across the VIP lounge toward the far balcony where Tanya is speaking with upperclassmen. \"Letting Tanya think she runs every social circle on campus gets old fast,\" Ally murmurs, sliding a glass closer to you. \"Glad you're on my side of the room tonight.\""
+          ],
+          choices: [
+            {
+              label: "Raise your glass with Ally as footsteps approach from the lounge entrance.",
+              action: () => {
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_vip_ally");
+              }
+            }
+          ]
+        };
+      }
+
+      // Beats 5–10: Brandon interrupts -> 6-Beat Three-Way Dialogue with Memory Check (Unmet / Friend / Foe)
+      state.presentNPCs = ["ally", "brandon"];
+
+      if (beat === 5) {
+        const brandonIntro =
+          brandonStanding === "unmet"
+            ? "Before you can answer, a tall guy with tapered locs and wired headphones slung low steps up to the bar—Brandon, someone you haven't crossed paths with until tonight. He sizes you and Ally up with a loose, unbothered grin."
+            : brandonStanding === "foe"
+              ? "Before you can answer, Brandon steps into the circle with his tapered locs and headphones—and because you've got bad blood with him, his eyes narrow the second he spots you next to Ally."
+              : "Before you can answer, Brandon strolls up with his tapered locs and headphones—and since you're on friendly terms with him, he gives you a quick, knowing nod before looking at Ally.";
+
+        return {
+          text: [
+            brandonIntro,
+            "\"Look who made the VIP cut,\" Brandon says, leaning one elbow against the counter between you and Ally. \"Word around the hall is Ally rolled out the red carpet tonight.\""
+          ],
+          choices: [
+            {
+              label: "Answer Brandon cleanly and keep Ally engaged in the three-way banter.",
+              action: () => {
+                if (brandonStanding === "friend") state.rep.brandon += 2;
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_vip_ally");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 6) {
+        const brandonBeat6 =
+          brandonStanding === "unmet"
+            ? "\"I'm Brandon,\" he says, tapping his phone against his palm. \"Don't think we've officially met yet—but I like watching how people handle themselves when Ally starts playing host.\""
+            : brandonStanding === "foe"
+              ? "\"Careful, Ally,\" Brandon says with a sharp edge aimed straight at you. \"Rumors and reality don't always match up once the pressure's on.\""
+              : "\"Good seeing you make it through the gate,\" Brandon says smoothly to you before grinning at Ally. \"Told you he doesn't sweat crowded rooms.\"";
+
+        return {
+          text: [
+            brandonBeat6,
+            "Ally laughs a little too brightly, angling closer to you while still keeping one eye on Brandon's read of the room."
+          ],
+          choices: [
+            {
+              label: "Respond to Brandon's angle with calm, steady composure.",
+              action: () => {
+                state.control = clamp(state.control + 2, 0, 100);
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_vip_ally");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 7) {
+        const brandonBeat7 =
+          brandonStanding === "foe"
+            ? "Brandon presses his point, testing whether you'll lose your temper in front of Ally and half the VIP crowd."
+            : brandonStanding === "friend"
+              ? "Brandon tosses a dry remark about campus politics and Tanya's side of the room, letting you set the pace."
+              : "Brandon leans back against the rail, watching how you carry your posture and word choice under three-way scrutiny.";
+
+        return {
+          text: [
+            brandonBeat7,
+            "Ally watches your reaction closely, clearly weighing whether your confidence holds up when someone else steps into the conversation."
+          ],
+          choices: [
+            {
+              label: "Keep your words sharp, grounded, and unhurried.",
+              action: () => {
+                state.mastery = clamp(state.mastery + 2, 0, 100);
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_vip_ally");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 8) {
+        return {
+          text: [
+            "The three-way exchange peaks near the terrace doors as music pulses from the lounge. Brandon grins and nods toward the exit: \"Alright, I'm heading out toward the residence wing—let's see who's actually moving when the night wraps.\""
+          ],
+          choices: [
+            {
+              label: "Hold your ground beside Ally as Brandon steps back.",
+              action: () => {
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_vip_ally");
+              }
+            }
+          ]
+        };
+      }
+
+      if (beat === 9) {
+        const passedAllThree =
+          state.mastery >= 56 &&
+          state.aura >= 60 &&
+          state.control >= 58;
+
+        return {
+          text: [
+            passedAllThree
+              ? "Ally looks at you with unmistakable excitement—your Mastery, Aura, and Emotional Control all held steady through the entire interruption, making you stand head and shoulders above everyone else in the room. \"Forget the rest of this party,\" Ally whispers, taking your hand. \"Come back to my dorm with me.\""
+              : "The moment slips—whether from Aura, Mastery, or Emotional Control falling short under the pressure, Ally's eager smile falters as Brandon steps right back beside her. \"Actually, I'm going to head out with Brandon for a bit,\" Ally says quickly, turning toward him."
+          ],
+          choices: [
+            {
+              label: passedAllThree
+                ? "Go with Ally to her dorm for a private night together."
+                : "Watch Ally walk out of the lounge with Brandon.",
+              action: () => {
+                state.mem.allyPassedCheck = passedAllThree;
+                advanceGetToKnowYouBeat();
+                goToScene("ep2_vip_ally");
+              }
+            }
+          ]
+        };
+      }
+
+      const passedAllThree =
+        typeof state.mem.allyPassedCheck === "boolean"
+          ? state.mem.allyPassedCheck
+          : state.mastery >= 56 && state.aura >= 60 && state.control >= 58;
+
+      if (!state.mem.vipAllyResolved) {
+        state.mem.vipAllyResolved = true;
+        if (passedAllThree) {
+          state.rep.ally = (state.rep.ally || 0) + 6;
+          state.aura = clamp(state.aura + 3, 0, 100);
+          recordChoiceMemory("ep2_vip_ally_dorm_sfw", "ally", "Passed Mastery, Aura, and Emotional Control checks at the VIP Mixer and went to Ally's dorm for a romantic SFW scene regardless of Chloe status.");
+        } else {
+          state.rep.ally = (state.rep.ally || 0) - 3;
+          state.rep.brandon += 3;
+          recordChoiceMemory("ep2_vip_ally_left_with_brandon", "ally", "Missed a stat check during the three-way exchange at the VIP Mixer and watched Ally leave with Brandon.");
+        }
       }
 
       return {
-        text: [dormBeats[9]],
+        text: passedAllThree
+          ? [
+              "Inside Ally's dorm room, the noise of the VIP Mixer fades behind the locked door regardless of whether you're with Chloe or not. Ally's pick-me bravado softens into close, unhurried warmth as the night unfolds into a romantic SFW intimacy scene before morning light breaks over the room."
+            ]
+          : [
+              "Ally slips her arm through Brandon's and heads toward the lounge doors, leaving you behind as the music hums on—closing out the VIP Mixer on a sharp turn."
+            ],
         choices: [
           {
-            label: "Unlock Chapter One Finale Dossier →",
+            label: "Walk back across the quiet quad as the night closes →",
             action: () => {
-              advanceGetToKnowYouBeat();
-              goToScene("ep2_finale_dossier");
+              ep2TransitionToScene("ep2_night2_close");
             }
           }
         ]
@@ -982,7 +1931,7 @@ const EPISODE2_PART2_SCENES = {
     title: "VIP Mixer — Solo Entry",
     presentNPCs: ["tanya", "nate"],
     render: () => {
-      const arc = state.activeArc || startGetToKnowYouArc("ep2_bonus_vip_alone_arc", "tanya", "ep2_finale_dossier", 10);
+      const arc = state.activeArc || startGetToKnowYouArc("ep2_bonus_vip_alone_arc", "tanya", "ep2_night2_close", 10);
       const beat = arc.beatIndex;
 
       const soloVipBeats = [
@@ -1026,10 +1975,9 @@ const EPISODE2_PART2_SCENES = {
         text: [soloVipBeats[9]],
         choices: [
           {
-            label: "Unlock Chapter One Finale Dossier →",
+            label: "Step out into the quiet quad past midnight →",
             action: () => {
-              advanceGetToKnowYouBeat();
-              goToScene("ep2_finale_dossier");
+              ep2TransitionToScene("ep2_night2_close");
             }
           }
         ]
@@ -1048,18 +1996,23 @@ const EPISODE2_PART2_SCENES = {
     title: "VIP Mixer — With Chloe",
     presentNPCs: ["chloe", "max"],
     render: () => {
-      const arc = state.activeArc || startGetToKnowYouArc("ep2_bonus_vip_chloe_arc", "chloe", "ep2_finale_dossier", 10);
+      const arc = state.activeArc || startGetToKnowYouArc("ep2_bonus_vip_chloe_arc", "chloe", "ep2_night2_close", 10);
       const beat = arc.beatIndex;
       const meetsAura = state.aura >= 62;
-      const highControlAndMastery = state.control >= 58 && state.mastery >= 56;
       const lowControl = state.control < 58;
 
       if (beat <= 4) {
         const earlyBeats = [
-          "You walk past the velvet rope into the VIP Mixer with Chloe at your side, her leather jacket draped over her shoulders and golden hair catching the lounge lights.",
+          ep2ChloeModeLine(
+            "You walk past the velvet rope into the VIP Mixer with Chloe at your side, her leather jacket draped over her shoulders, golden hair catching the lounge lights, and her hand brushing lightly against yours.",
+            "You walk past the velvet rope into the VIP Mixer with Chloe at your side, her leather jacket draped over her shoulders, golden hair catching the lounge lights, and her posture composed and poised."
+          ),
           "Within three minutes of grabbing drinks near the terrace, Max strolls over in his bright Australian drawl, flashing an easy grin straight at Chloe. \"Knew you'd make the VIP list, Chloe. Mind if I join the table?\"",
           "Max pulls up a stool right beside Chloe's shoulder, subtly angling his body to box you out of the conversation while talking up his track finals.",
-          "Chloe glances between you and Max under lowered lashes, waiting to see how you carry yourself when another guy presses his angle."
+          ep2ChloeModeLine(
+            "Chloe glances between you and Max under lowered lashes with an expectant spark—waiting to see how you answer when another guy presses his angle.",
+            "Chloe glances between you and Max under lowered lashes with cool, calculating scrutiny—waiting to see how you hold frame when another guy presses his angle."
+          )
         ];
         return {
           text: [earlyBeats[beat - 1]],
@@ -1113,10 +2066,9 @@ const EPISODE2_PART2_SCENES = {
           text: [lowAuraBeats[9]],
           choices: [
             {
-              label: "Unlock Chapter One Finale Dossier →",
+              label: "Walk back across the quiet quad as the night closes →",
               action: () => {
-                advanceGetToKnowYouBeat();
-                goToScene("ep2_finale_dossier");
+                ep2TransitionToScene("ep2_night2_close");
               }
             }
           ]
@@ -1186,10 +2138,9 @@ const EPISODE2_PART2_SCENES = {
           text: [fightLossBeats[9]],
           choices: [
             {
-              label: "Unlock Chapter One Finale Dossier →",
+              label: "Walk back across the quiet quad as the night closes →",
               action: () => {
-                advanceGetToKnowYouBeat();
-                goToScene("ep2_finale_dossier");
+                ep2TransitionToScene("ep2_night2_close");
               }
             }
           ]
@@ -1233,10 +2184,9 @@ const EPISODE2_PART2_SCENES = {
         text: [winChloeVipBeats[9]],
         choices: [
           {
-            label: "Unlock Chapter One Finale Dossier →",
+            label: "Walk back across the quiet quad as the night closes →",
             action: () => {
-              advanceGetToKnowYouBeat();
-              goToScene("ep2_finale_dossier");
+              ep2TransitionToScene("ep2_night2_close");
             }
           }
         ]
@@ -1279,6 +2229,7 @@ const EPISODE2_PART2_SCENES = {
     render: () => {
       const girls = ["maya", "brandy", "mandy", "tanya"];
       if (knowsLaura(state)) girls.push("laura");
+      if (state.mem.vipAllyResolved) girls.push("ally");
 
       const hotLines = girls.map((g) => {
         const name = CHARACTERS[g] ? CHARACTERS[g].name : g;
